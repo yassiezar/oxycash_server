@@ -4,13 +4,21 @@ enum AccountType {
     CASH,
 }
 
-struct Account<U: Into<f64>, T: Into<f64>> {
+struct Account<U: Into<f64>, T: Into<f64>>
+where
+    U: std::marker::Copy + std::ops::Sub<Output = U> + std::ops::Add<Output = U>,
+    T: std::marker::Copy + std::ops::Sub<Output = T> + std::ops::Add<Output = T>,
+{
     amount: U,
     growth_rate: T,
     account_type: AccountType,
 }
 
-impl<U: Into<f64> + Copy, T: Into<f64> + Copy> Account<U, T> {
+impl<U: Into<f64> + Copy, T: Into<f64> + Copy> Account<U, T>
+where
+    U: std::marker::Copy + std::ops::Sub<Output = U> + std::ops::Add<Output = U>,
+    T: std::marker::Copy + std::ops::Sub<Output = T> + std::ops::Add<Output = T>,
+{
     fn calculate_annual_growth(&self) -> f64 {
         // Use compound interest
         let total = match self.account_type {
@@ -26,6 +34,26 @@ impl<U: Into<f64> + Copy, T: Into<f64> + Copy> Account<U, T> {
         };
 
         return total - self.amount.into();
+    }
+
+    fn withdraw(&mut self, amount: U) -> &mut Self {
+        self.amount = match self.account_type {
+            AccountType::CASH => self.amount - amount,
+            AccountType::ASSET => self.amount - amount,
+            AccountType::LIABILITY => self.amount + amount,
+        };
+
+        return self;
+    }
+
+    fn deposit(&mut self, amount: U) -> &mut Self {
+        self.amount = match self.account_type {
+            AccountType::CASH => self.amount + amount,
+            AccountType::ASSET => self.amount + amount,
+            AccountType::LIABILITY => self.amount - amount,
+        };
+
+        return self;
     }
 }
 
