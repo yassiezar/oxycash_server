@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 
+enum AssetType {
+    STOCK(Stock),
+    CASH(Cash),
+}
+
 struct StockPrice {
     price: u32,
     date: u64,
@@ -14,26 +19,56 @@ pub struct Stock {
     current_price: StockPrice,
 }
 
-struct StockHolding {
-    stock: Stock,
+struct Cash {
+    currency: String,
+}
+
+trait Asset {}
+
+impl Asset for Cash {}
+impl Asset for Stock {}
+impl Asset for AssetType {}
+
+struct AssetHolding<AssetT: Asset> {
+    asset: AssetT,
     owned: u32,
 }
 
 pub struct Portfolio {
-    holdings: HashMap<u64, StockHolding>,
+    holdings: HashMap<u64 /* asset ID */, AssetHolding<AssetType> /* Holding type */>,
 }
 
 impl Stock {
-    pub fn new(id: u64, isin: String, market_name: String, display_name: String, ticker: String) -> Stock {
+    pub fn new(
+        id: u64,
+        isin: String,
+        market_name: String,
+        display_name: String,
+        ticker: String,
+    ) -> Stock {
         let price: StockPrice = StockPrice { price: 0, date: 0 };
-        Stock { id, isin, market_name, display_name, ticker, current_price: price }
+        Stock {
+            id,
+            isin,
+            market_name,
+            display_name,
+            ticker,
+            current_price: price,
+        }
     }
 }
 
 impl Portfolio {
     pub fn new() -> Portfolio {
+        let cash = AssetHolding {
+            asset: AssetType::CASH(Cash {
+                currency: "GBP".to_string(),
+            }),
+            owned: 0,
+        };
+
         Portfolio {
-            holdings: HashMap::new(),
+            holdings: HashMap::from([(0, cash)]),
         }
     }
 
@@ -41,14 +76,28 @@ impl Portfolio {
         if let Some(x) = self.holdings.get_mut(&stock.id) {
             x.owned += amount;
         } else {
-            self.holdings.insert(stock.id, StockHolding { stock, owned: amount });
+            self.holdings.insert(
+                stock.id,
+                AssetHolding {
+                    asset: AssetType::STOCK(stock),
+                    owned: amount,
+                },
+            );
         }
     }
 
     fn portfolio_value(&self) -> u64 {
         let mut value: u64 = 0;
         for (_, holding) in &self.holdings {
-            value += (holding.owned * holding.stock.current_price.price) as u64;
+            let asset= &holding.asset;
+            match asset{
+                AssetType::CASH(_) => {
+                    value += holding.owned as u64;
+                },
+                AssetType::STOCK(asset) => {
+                    value += (asset.current_price.price * holding.owned) as u64;
+                },
+            }
         }
 
         return value;
